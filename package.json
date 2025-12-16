@@ -46,6 +46,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.7",
     "nodemon": "^2.0.12",
+    "openai": "^6.10.0",
     "redis": "^4.7.0",
     "regenerator-runtime": "^0.13.9"
   },

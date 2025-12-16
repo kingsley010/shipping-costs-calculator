@@ -1,64 +1,82 @@
 import Shipping from '../models/shippingModel.js';
-import redis from 'redis';
-
-const redisClient = redis.createClient();
-
-await redisClient.connect();
+import { getRedisClient } from '../config/redisClient.js';
 
 class ShippingController {
 
-    /**
+  /**
      * @method calculateCost
-     * @description calculat shipping cost
+     * @description calculate cost
      * @param {object} request - The Request Object
      * @param {object} response - The Response Object
      * @returns {object} JSON API Response
-     */
-    static async calculateCost(request, response) {
-        try {
-            const { weight, distance, cargoType } = request.body;
-            const cacheKey = `shipping:${cargoType}:${weight}:${distance}`;
+     */  
+  static async calculateCost(req, res) {
+    try {
+      const { weight, distance, cargoType } = req.body;
+      const cacheKey = `shipping:${cargoType}:${weight}:${distance}`;
 
-            console.log("cached key: ", cacheKey);
+      const redis = getRedisClient();
 
-            // Check Redis Cache
-            const cachedData = await redisClient.get(cacheKey);
-            console.log("cachedData: ", cachedData);
-            console.log("parsed cached Data: ", JSON.parse(cachedData));
+      // ✅ Try cache only if Redis exists
+      if (redis) {
+        const cachedData = await redis.get(cacheKey);
+        if (cachedData) {
+          const rate = JSON.parse(cachedData);
 
-            if (cachedData) {
-                return response.json(JSON.parse(cachedData)); 
-            }
+          const totalCost =
+            rate.basePrice +
+            weight * rate.weightRate +
+            distance * rate.distanceRate;
 
-            console.log(cargoType);
-
-            const rate = await Shipping.findOne({ cargoType }); 
-
-            console.log("rate: ", rate);
-
-            if (!rate) {
-                return response.status(404).json({
-                    error: "No rate found for this cargo type"
-                });
-            }
-
-            const totalCost = rate.basePrice + weight * rate.weight + distance * rate.distance;
-
-            // Store result in Redis (Cache for 1 hour)
-            await redisClient.setEx(cacheKey, 3600, JSON.stringify(totalCost));
-
-            console.log(totalCost);
-
-            response.json({ cargoType, weight, distance, totalCost, currency: rate.currency });
-
-        } catch (error) {
-            console.log("error: ", error);
-            response.status(500).json({
-                error: error
-            });
+          return res.json({
+            cargoType,
+            weight,
+            distance,
+            totalCost,
+            currency: rate.currency
+          });
         }
-    }   
+      }
 
+      // Fetch from DB
+      const rate = await Shipping.findOne({ cargoType });
+
+      if (!rate) {
+        return res.status(404).json({
+          error: "No rate found for this cargo type"
+        });
+      }
+
+      const totalCost =
+        rate.basePrice +
+        weight * rate.weight +
+        distance * rate.distance;
+
+      // Cache if Redis exists
+      if (redis) {
+        const dataToCache = {
+          basePrice: rate.basePrice,
+          weightRate: rate.weight,
+          distanceRate: rate.distance,
+          currency: rate.currency
+        };
+
+        await redis.setEx(cacheKey, 3600, JSON.stringify(dataToCache));
+      }
+
+      return res.json({
+        cargoType,
+        weight,
+        distance,
+        totalCost,
+        currency: rate.currency
+      });
+
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
 }
 
 export default ShippingController;

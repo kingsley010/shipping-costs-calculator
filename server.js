@@ -24,15 +24,17 @@ const mongiDbName = process.env.MONGO_DB_NAME
 const dataBase = `${mongoUri}/${mongiDbName}`;
 
 // Connect to Mongo DB
-mongoClient.connect(dataBase) 
-  .then(() => console.log(`Connected to MongoDB ${dataBase}`))
-  .catch(err => console.log(err));
+// mongoClient.connect(dataBase) 
+//   .then(() => console.log(`Connected to MongoDB ${dataBase}`))
+//   .catch(err => console.log(err));
 
 // Route Files
 import shipping from './routes/shippingRoute.js';
 import users from './routes/userRoute.js';
+import ai from './routes/aiRoute.js';
 app.use('/api/v1', shipping);
 app.use('/api/v1', users);
+app.use ('/api/v1', ai);
 
 const port = process.env.PORT || 3000;
 
