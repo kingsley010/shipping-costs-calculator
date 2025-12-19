@@ -6,6 +6,10 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from "dotenv"; 
 
+import shipping from './routes/shippingRoute.js';
+import users from './routes/userRoute.js';
+import ai from './routes/aiRoute.js';
+
 dotenv.config();
 
 const app = express();
@@ -29,9 +33,6 @@ const dataBase = `${mongoUri}/${mongiDbName}`;
 //   .catch(err => console.log(err));
 
 // Route Files
-import shipping from './routes/shippingRoute.js';
-import users from './routes/userRoute.js';
-import ai from './routes/aiRoute.js';
 app.use('/api/v1', shipping);
 app.use('/api/v1', users);
 app.use ('/api/v1', ai);
